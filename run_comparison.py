@@ -11,13 +11,27 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 """
-This script runs a comparative test with the sample app.
+This script builds and runs the comparison app, switching from one library to the next,
+taking measurements as it goes, and outputs the results neatly.
 
-It builds and runs the sample app, switching from one library to the next,
-taking measurements as it goes.
+Due to a bug, you must specify the CPU when running the script.
+Use -c armeabi-v7a for most phones. Use -c armeabi for ARM v5-6 phones, or
+-c arm64 for 64-bit ARM devices. Some emulators and tablets will need -c x86.
 
 To select a subset of the libraries, use the -s option with a
-space-separated list.
+space-separated list. Available options are fresco, fresco-okhttp,
+glide, volley, drawee-volley, uil, and picasso.
+
+To see the comparison for only network or local images, use -d network or -d local.
+
+Note that Volley does not support local images, and fresco and fresco-okhttp
+are identical for local images.
+
+Results will vary based on the the device, the network conditions and the mix of images available.
+
+Example: to run a local-only comparison of fresco and picasso on an ARM v7 device:
+./run_comparison.py -s fresco picasso -d local -c armeabi-v7a
+
 """
 
 from __future__ import absolute_import
@@ -200,6 +214,10 @@ def print_stats(stats):
     failures = len(stats.failure_wait_times)
     total_count = successes + cancellations + failures
 
+    if total_count == 0:
+        print("Unable to read logs.")
+        return
+
     total_wait_time = (
         sum(stats.success_wait_times) +
         sum(stats.cancellation_wait_times) +
@@ -271,8 +289,8 @@ def main():
 
     install_apks(args.cpu)
 
-    for scenario_name in scenarios:
-        for source_name in sources:
+    for source_name in sources:
+        for scenario_name in scenarios:
             if valid_scenario(scenario_name, source_name):
                 print()
                 print('Testing {} {}'.format(scenario_name, source_name))

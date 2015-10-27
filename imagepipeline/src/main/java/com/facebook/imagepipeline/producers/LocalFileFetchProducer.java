@@ -9,6 +9,7 @@
 
 package com.facebook.imagepipeline.producers;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 
@@ -25,14 +26,15 @@ public class LocalFileFetchProducer extends LocalFetchProducer {
 
   public LocalFileFetchProducer(
       Executor executor,
-      PooledByteBufferFactory pooledByteBufferFactory) {
-    super(executor, pooledByteBufferFactory);
+      PooledByteBufferFactory pooledByteBufferFactory,
+      boolean decodeFileDescriptorEnabled) {
+    super(executor, pooledByteBufferFactory, decodeFileDescriptorEnabled);
   }
 
   @Override
   protected EncodedImage getEncodedImage(final ImageRequest imageRequest) throws IOException {
-    return getByteBufferBackedEncodedImage(
-        imageRequest.getSourceFile().toString(),
+    return getEncodedImage(
+        new FileInputStream(imageRequest.getSourceFile().toString()),
         (int) imageRequest.getSourceFile().length());
   }
 

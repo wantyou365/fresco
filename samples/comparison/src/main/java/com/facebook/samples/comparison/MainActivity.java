@@ -12,8 +12,12 @@
 
 package com.facebook.samples.comparison;
 
+import android.content.Context;
+import android.content.res.Configuration;
 import android.database.Cursor;
+import android.graphics.Point;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.Handler;
@@ -22,24 +26,27 @@ import android.provider.MediaStore;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.facebook.common.internal.VisibleForTesting;
 import com.facebook.common.logging.FLog;
-import com.facebook.samples.comparison.configs.imagepipeline.ImagePipelineConfigFactory;
-import com.facebook.samples.comparison.instrumentation.PerfListener;
-import com.facebook.samples.comparison.adapters.ImageListAdapter;
+import com.facebook.samples.comparison.adapters.AQueryAdapter;
 import com.facebook.samples.comparison.adapters.FrescoAdapter;
 import com.facebook.samples.comparison.adapters.GlideAdapter;
+import com.facebook.samples.comparison.adapters.ImageListAdapter;
 import com.facebook.samples.comparison.adapters.PicassoAdapter;
 import com.facebook.samples.comparison.adapters.UilAdapter;
-import com.facebook.samples.comparison.adapters.VolleyDraweeAdapter;
 import com.facebook.samples.comparison.adapters.VolleyAdapter;
+import com.facebook.samples.comparison.adapters.VolleyDraweeAdapter;
+import com.facebook.samples.comparison.configs.imagepipeline.ImagePipelineConfigFactory;
+import com.facebook.samples.comparison.instrumentation.PerfListener;
 import com.facebook.samples.comparison.urlsfetcher.ImageFormat;
 import com.facebook.samples.comparison.urlsfetcher.ImageSize;
 import com.facebook.samples.comparison.urlsfetcher.ImageUrlsFetcher;
@@ -60,6 +67,7 @@ public class MainActivity extends ActionBarActivity {
   public static final int PICASSO_INDEX = 4;
   public static final int UIL_INDEX = 5;
   public static final int VOLLEY_INDEX = 6;
+  public static final int AQUERY_INDEX = 7;
 
   // These need to be in sync with {@link R.array.image_sources}
   public static final int NETWORK_INDEX = 1;
@@ -262,6 +270,9 @@ public class MainActivity extends ActionBarActivity {
             new VolleyDraweeAdapter(this, mPerfListener) :
             new VolleyAdapter(this, mPerfListener);
         break;
+      case AQUERY_INDEX:
+        mCurrentAdapter = new AQueryAdapter(this, mPerfListener);
+        break;
       default:
         mCurrentAdapter = null;
         return;
@@ -311,15 +322,40 @@ public class MainActivity extends ActionBarActivity {
     mHandler.removeCallbacks(mStatsClockTickRunnable);
   }
 
+  public static int calcDesiredSize(Context context, int parentWidth, int parentHeight) {
+    int orientation = context.getResources().getConfiguration().orientation;
+    int desiredSize = (orientation == Configuration.ORIENTATION_LANDSCAPE) ?
+        parentHeight / 2 : parentHeight / 3;
+    return Math.min(desiredSize, parentWidth);
+  }
+
+  private ImageSize chooseImageSize() {
+    ViewGroup.LayoutParams layoutParams = mRecyclerView.getLayoutParams();
+    if (layoutParams == null) {
+      return ImageSize.LARGE_THUMBNAIL;
+    }
+    int size = calcDesiredSize(this, layoutParams.width, layoutParams.height);
+    if (size <= 90) {
+      return ImageSize.SMALL_SQUARE;
+    } else if (size <= 160) {
+      return ImageSize.SMALL_THUMBNAIL;
+    } else if (size <= 320) {
+      return ImageSize.MEDIUM_THUMBNAIL;
+    } else if (size <= 640) {
+      return ImageSize.LARGE_THUMBNAIL;
+    } else if (size <= 1024) {
+      return ImageSize.HUGE_THUMBNAIL;
+    } else {
+      return ImageSize.ORIGINAL_IMAGE;
+    }
+  }
+
   private void loadNetworkUrls() {
     String url = "https://api.imgur.com/3/gallery/hot/viral/0.json";
+    ImageSize staticSize = chooseImageSize();
     ImageUrlsRequestBuilder builder = new ImageUrlsRequestBuilder(url)
-        .addImageFormat(
-            ImageFormat.JPEG,
-            ImageSize.LARGE_THUMBNAIL)
-        .addImageFormat(
-            ImageFormat.PNG,
-            ImageSize.LARGE_THUMBNAIL);
+        .addImageFormat(ImageFormat.JPEG, staticSize)
+        .addImageFormat(ImageFormat.PNG, staticSize);
     if (mAllowAnimations) {
       builder.addImageFormat(
           ImageFormat.GIF,
@@ -410,5 +446,19 @@ public class MainActivity extends ActionBarActivity {
 
   private static void appendValue(StringBuilder sb, String prefix, String value, String suffix) {
     sb.append(prefix).append(value).append(suffix);
+  }
+
+  /**
+   * Determines display's height.
+   */
+  public int getDisplayHeight() {
+    Display display = getWindowManager().getDefaultDisplay();
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB_MR2) {
+      return display.getHeight();
+    } else {
+      final Point size = new Point();
+      display.getSize(size);
+      return size.y;
+    }
   }
 }

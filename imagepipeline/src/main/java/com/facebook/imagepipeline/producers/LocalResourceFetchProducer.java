@@ -31,14 +31,15 @@ public class LocalResourceFetchProducer extends LocalFetchProducer {
   public LocalResourceFetchProducer(
       Executor executor,
       PooledByteBufferFactory pooledByteBufferFactory,
-      Resources resources) {
-    super(executor, pooledByteBufferFactory);
+      Resources resources,
+      boolean decodeFileDescriptorEnabled) {
+    super(executor, pooledByteBufferFactory, decodeFileDescriptorEnabled);
     mResources = resources;
   }
 
   @Override
   protected EncodedImage getEncodedImage(ImageRequest imageRequest) throws IOException {
-    return getByteBufferBackedEncodedImage(
+    return getEncodedImage(
         mResources.openRawResource(getResourceId(imageRequest)),
         getLength(imageRequest));
   }

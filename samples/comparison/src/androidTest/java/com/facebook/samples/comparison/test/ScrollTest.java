@@ -12,14 +12,10 @@
 
 package com.facebook.samples.comparison.test;
 
-import android.graphics.Point;
-import android.os.Build;
+import android.support.v7.widget.RecyclerView;
 import android.test.ActivityInstrumentationTestCase2;
 import android.test.TouchUtils;
-import android.view.Display;
-import android.widget.GridView;
 import android.widget.Spinner;
-import android.support.v7.widget.RecyclerView;
 
 import com.facebook.common.logging.FLog;
 import com.facebook.samples.comparison.MainActivity;
@@ -129,12 +125,12 @@ public class ScrollTest extends ActivityInstrumentationTestCase2<MainActivity> {
    */
   private void disableAnimatedImages() {
     getInstrumentation().runOnMainSync(
-            new Runnable() {
-              @Override
-              public void run() {
-                mActivity.setAllowAnimations(false);
-              }
-            });
+        new Runnable() {
+          @Override
+          public void run() {
+            mActivity.setAllowAnimations(false);
+          }
+        });
   }
 
   /**
@@ -198,35 +194,17 @@ public class ScrollTest extends ActivityInstrumentationTestCase2<MainActivity> {
    * Scrolls the list view given number of times.
    */
   private void scrollMultipleTimes(int times) throws Exception {
-    final int itemCount = mImageList.getAdapter().getItemCount();
-    final int step = 6;
-    int currentItem = 0;
-    while (currentItem < itemCount) {
+    final int height = mActivity.getDisplayHeight();
+    for (int i = 0; i < times; i++) {
       Thread.sleep(BEFORE_SCROLL_TIME_MS);
-      final int finalCurrentItem = currentItem;
       getInstrumentation().runOnMainSync(
           new Runnable() {
             @Override
             public void run() {
-              mImageList.smoothScrollToPosition(finalCurrentItem);
+              mImageList.smoothScrollBy(0, height / 2);
             }
           });
       Thread.sleep(SCROLL_TIME_MS);
-      currentItem += step;
-    }
-  }
-
-  /**
-   * Determines display's height.
-   */
-  private int getDisplayHeight() {
-    Display display = mActivity.getWindowManager().getDefaultDisplay();
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB_MR2) {
-      return display.getHeight();
-    } else {
-      final Point size = new Point();
-      display.getSize(size);
-      return size.y;
     }
   }
 }

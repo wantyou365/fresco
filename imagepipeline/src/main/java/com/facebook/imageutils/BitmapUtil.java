@@ -13,10 +13,14 @@ import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
+import android.support.v4.util.Pools;
 import android.util.Pair;
+
+import com.facebook.common.internal.Preconditions;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 import javax.annotation.Nullable;
 
@@ -24,6 +28,20 @@ import javax.annotation.Nullable;
  * This class contains utility method for Bitmap
  */
 public final class BitmapUtil {
+  private static final int DECODE_BUFFER_SIZE = 16 * 1024;
+  private static final int POOL_SIZE = 12;
+  private static final Pools.SynchronizedPool<ByteBuffer> DECODE_BUFFERS
+      = new Pools.SynchronizedPool<>(POOL_SIZE);
+
+  /**
+   * Bytes per pixel definitions
+   */
+  public static final int ALPHA_8_BYTES_PER_PIXEL = 1;
+  public static final int ARGB_4444_BYTES_PER_PIXEL = 2;
+  public static final int ARGB_8888_BYTES_PER_PIXEL = 4;
+  public static final int RGB_565_BYTES_PER_PIXEL = 2;
+
+  public static final float MAX_BITMAP_SIZE = 2048f;
 
   /**
    * @return size in bytes of the underlying bitmap
@@ -71,12 +89,55 @@ public final class BitmapUtil {
    * @return dimensions of the image
    */
   public static @Nullable Pair<Integer, Integer> decodeDimensions(InputStream is) {
+    Preconditions.checkNotNull(is);
+    ByteBuffer byteBuffer = DECODE_BUFFERS.acquire();
+    if (byteBuffer == null) {
+      byteBuffer = ByteBuffer.allocate(DECODE_BUFFER_SIZE);
+    }
     BitmapFactory.Options options = new BitmapFactory.Options();
     options.inJustDecodeBounds = true;
-
-    BitmapFactory.decodeStream(is, null, options);
-    return (options.outWidth == -1 || options.outHeight == -1) ?
-        null : new Pair(options.outWidth, options.outHeight);
+    try {
+      options.inTempStorage = byteBuffer.array();
+      BitmapFactory.decodeStream(is, null, options);
+      return (options.outWidth == -1 || options.outHeight == -1) ?
+          null : new Pair(options.outWidth, options.outHeight);
+    } finally {
+      DECODE_BUFFERS.release(byteBuffer);
+    }
   }
 
+  /**
+   * Returns the amount of bytes used by a pixel in a specific
+   * {@link android.graphics.Bitmap.Config}
+   * @param bitmapConfig the {@link android.graphics.Bitmap.Config} for which the size in byte
+   * will be returned
+   * @return
+   */
+  public static int getPixelSizeForBitmapConfig(Bitmap.Config bitmapConfig) {
+
+    switch (bitmapConfig) {
+      case ARGB_8888:
+        return ARGB_8888_BYTES_PER_PIXEL;
+      case ALPHA_8:
+        return ALPHA_8_BYTES_PER_PIXEL;
+      case ARGB_4444:
+        return ARGB_4444_BYTES_PER_PIXEL;
+      case RGB_565:
+        return RGB_565_BYTES_PER_PIXEL;
+    }
+    throw new UnsupportedOperationException("The provided Bitmap.Config is not supported");
+  }
+
+  /**
+   * Returns the size in byte of an image with specific size
+   * and {@link android.graphics.Bitmap.Config}
+   * @param width the width of the image
+   * @param height the height of the image
+   * @param bitmapConfig the {@link android.graphics.Bitmap.Config} for which the size in byte
+   * will be returned
+   * @return
+   */
+  public static int getSizeInByteForBitmap(int width, int height, Bitmap.Config bitmapConfig) {
+    return width * height * getPixelSizeForBitmapConfig(bitmapConfig);
+  }
 }

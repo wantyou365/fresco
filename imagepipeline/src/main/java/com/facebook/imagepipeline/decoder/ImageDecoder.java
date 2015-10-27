@@ -17,14 +17,13 @@ import com.facebook.imageformat.GifFormatChecker;
 import com.facebook.imageformat.ImageFormat;
 import com.facebook.imageformat.ImageFormatChecker;
 import com.facebook.imagepipeline.animated.factory.AnimatedImageFactory;
-import com.facebook.imagepipeline.bitmaps.PlatformBitmapFactory;
 import com.facebook.imagepipeline.common.ImageDecodeOptions;
 import com.facebook.imagepipeline.image.CloseableImage;
 import com.facebook.imagepipeline.image.CloseableStaticBitmap;
 import com.facebook.imagepipeline.image.EncodedImage;
 import com.facebook.imagepipeline.image.ImmutableQualityInfo;
 import com.facebook.imagepipeline.image.QualityInfo;
-import com.facebook.imagepipeline.memory.PooledByteBufferInputStream;
+import com.facebook.imagepipeline.platform.PlatformDecoder;
 
 import java.io.InputStream;
 
@@ -46,13 +45,16 @@ import java.io.InputStream;
 public class ImageDecoder {
 
   private final AnimatedImageFactory mAnimatedImageFactory;
-  private final PlatformBitmapFactory mBitmapFactoryWithPool;
+  private final Bitmap.Config mBitmapConfig;
+  private final PlatformDecoder mPlatformDecoder;
 
   public ImageDecoder(
       final AnimatedImageFactory animatedImageFactory,
-      final PlatformBitmapFactory bitmapFactoryWithPool) {
+      final PlatformDecoder platformDecoder,
+      final Bitmap.Config bitmapConfig) {
     mAnimatedImageFactory = animatedImageFactory;
-    mBitmapFactoryWithPool = bitmapFactoryWithPool;
+    mBitmapConfig = bitmapConfig;
+    mPlatformDecoder = platformDecoder;
   }
 
   /**
@@ -108,7 +110,7 @@ public class ImageDecoder {
     }
     try {
       if (GifFormatChecker.isAnimated(is)) {
-        return mAnimatedImageFactory.decodeGif(encodedImage, options);
+        return mAnimatedImageFactory.decodeGif(encodedImage, options, mBitmapConfig);
       }
       return decodeStaticImage(encodedImage);
     } finally {
@@ -123,7 +125,7 @@ public class ImageDecoder {
   public CloseableStaticBitmap decodeStaticImage(
       final EncodedImage encodedImage) {
     CloseableReference<Bitmap> bitmapReference =
-        mBitmapFactoryWithPool.decodeFromEncodedImage(encodedImage);
+        mPlatformDecoder.decodeFromEncodedImage(encodedImage, mBitmapConfig);
     try {
       return new CloseableStaticBitmap(
           bitmapReference,
@@ -147,7 +149,7 @@ public class ImageDecoder {
       int length,
       QualityInfo qualityInfo) {
     CloseableReference<Bitmap> bitmapReference =
-        mBitmapFactoryWithPool.decodeJPEGFromEncodedImage(encodedImage, length);
+        mPlatformDecoder.decodeJPEGFromEncodedImage(encodedImage, mBitmapConfig, length);
     try {
       return new CloseableStaticBitmap(
           bitmapReference,
@@ -170,7 +172,7 @@ public class ImageDecoder {
   public CloseableImage decodeAnimatedWebp(
       final EncodedImage encodedImage,
       final ImageDecodeOptions options) {
-    return mAnimatedImageFactory.decodeWebP(encodedImage, options);
+    return mAnimatedImageFactory.decodeWebP(encodedImage, options, mBitmapConfig);
   }
 
 }
