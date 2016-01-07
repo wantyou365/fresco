@@ -17,7 +17,7 @@ Find out more at our [website](http://frescolib.org/index.html).
 
 ## Requirements
 
-Fresco can be included in any Android application. 
+Fresco can be included in any Android application. sdfsf
 
 Fresco supports Android 2.3 (Gingerbread) and later. 
 
